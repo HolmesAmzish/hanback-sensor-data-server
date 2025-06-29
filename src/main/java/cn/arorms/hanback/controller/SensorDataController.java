@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * SensorDataController
+ * @version 1.0 2025-06-29
+ */
 @RestController
 @RequestMapping("/api/data")
 public class SensorDataController {

@@ -2,13 +2,19 @@ package cn.arorms.hanback.service;
 
 import cn.arorms.hanback.entity.SensorDataEntity;
 import cn.arorms.hanback.mapper.SensorDataMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * SensorDataService
+ * @version 1.0 2025-06-29
+ */
 @Service
 public class SensorDataService {
+    @Autowired
     private SensorDataMapper sensorDataMapper;
 
     public List<SensorDataEntity> getDataByPageAndDate(int page, int size, LocalDateTime startTime, LocalDateTime endTime) {
@@ -24,7 +30,7 @@ public class SensorDataService {
         return sensorDataMapper.deleteById(id) > 0;
     }
 
-    public boolean insertData(SensorDataEntity data) {
-        return sensorDataMapper.insert(data) > 0;
+    public void insertData(SensorDataEntity data) {
+        sensorDataMapper.insert(data);
     }
 }

@@ -7,6 +7,10 @@ import org.apache.ibatis.annotations.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * SensorDataMapper
+ * @version 1.0 2025-06-29
+ */
 @Mapper
 public interface SensorDataMapper {
     List<SensorDataEntity> selectByPageAndDate(
@@ -20,5 +24,5 @@ public interface SensorDataMapper {
 
     int deleteById(@Param("id") Long id);
 
-    int insert(SensorDataEntity data);
+    void insert(SensorDataEntity data);
 }

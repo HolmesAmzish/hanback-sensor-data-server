@@ -52,12 +52,34 @@ float random_float(float min, float max) {
 }
 
 void send_sensor_data(int fd) {
-    float temperature = random_float(20.0, 30.0);
-    float humidity = random_float(40.0, 70.0);
-    float light = random_float(300.0, 1000.0);
+    // 模拟数据
+    unsigned short src_addr = 0x1234;
+    unsigned short dst_addr = 0x5678;
+    unsigned short dst2 = 0x0000;
+    unsigned short dst3 = 0x0000;
+    unsigned int seq_num = 0x01;
+    unsigned short temperature = (unsigned short)(random_float(20.0, 30.0) * 100);
+    unsigned short humidity = (unsigned short)(random_float(40.0, 70.0) * 100);
+    unsigned short light = (unsigned short)random_float(300.0, 1000.0);
+    unsigned char func_code = 0x01;
+    unsigned char data[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
 
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%.0f\n", temperature, humidity, light);
-    write(fd, buffer, strlen(buffer));
-    printf("Sent: %s", buffer);
+    // 组织数据包
+    unsigned char packet[30];
+    int pos = 0;
+    
+    memcpy(packet + pos, &src_addr, 2); pos += 2;
+    memcpy(packet + pos, &dst_addr, 2); pos += 2;
+    memcpy(packet + pos, &dst2, 2); pos += 2;
+    memcpy(packet + pos, &dst3, 2); pos += 2;
+    memcpy(packet + pos, &seq_num, 4); pos += 4;
+    memcpy(packet + pos, &temperature, 2); pos += 2;
+    memcpy(packet + pos, &humidity, 2); pos += 2;
+    memcpy(packet + pos, &light, 2); pos += 2;
+    packet[pos++] = func_code;
+    memcpy(packet + pos, data, 5); pos += 5;
+
+    // 发送数据
+    write(fd, packet, pos);
+    printf("Sent binary packet (%d bytes)\n", pos);
 }
