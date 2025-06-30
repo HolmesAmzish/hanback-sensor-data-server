@@ -4,9 +4,9 @@
 
 ### 程序设计题目
 
-完成节点数据采集和标签信息的洪泛传输,能够在与 Sink 节点相连接的 PC 上看到结果(标签信息、感知的数据)。其中,节点感知数据采集仅包括:光照值、温度值、湿度值,采集节点每 4s 采集一次温湿 度、每 2s 采集一次光照。标签数据的访问周期为 3s。 
+完成节点数据采集和标签信息的洪泛传输,能够在与 Sink 节点相连接的 PC 上看到结果(标签信息、感知的数据)。其中,节点感知数据采集仅包括:光照值、温度值、湿度值,采集节点每 4s 采集一次温湿 度、每 2s 采集一次光照。标签数据的访问周期为 3s。
 
-提醒: 
+提醒:
 
 1. 记录编译、运行过程中出现的错误和现象,及解决方法、心得体会。这一部分重要,考  核占比大。
 2. 应在本地 PC 上,采用 Python 或 Java 或 C 语言编写串口读写程序,实现串口数据收发功  能;前期可直接在 PC 上选用相关串口工具读写串口数据。
@@ -16,7 +16,7 @@
 
 > [!NOTE]
 >
-> 课程设计项目文件全部托管在我的 Github 仓库中 [sensor-data-server](https://github.com/HolmesAmzish/hanback-sensor-data-server)。
+> 课程设计项目文件全部托管在我的 Github 仓库中 sensor-data-server：https://github.com/HolmesAmzish/hanback-sensor-data-server。
 
 后端采用 Java 语言 Spring 框架。
 
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS sensor_data (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='传感器数据表';
 ```
 
-随后需要创建对应的数据对象和数据库操作映射，首先定义映射接口
+随后需要创建对应的数据对象和数据库操作映射，首先定义映射接口 `SensorDataMapper.java`
 
 ```java
 package cn.arorms.hanback.mapper;
@@ -88,7 +88,7 @@ public interface SensorDataMapper {
 }
 ```
 
-最后在类的资源路径下定义映射接口与数据库操作的行为
+最后在类的资源路径下定义映射接口与数据库操作的行为 `SensorDataMapper.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
@@ -328,8 +328,6 @@ public class SensorDataService {
 ```
 
 至此完成数据库部分的基本设计
-
-
 
 ## 串口传输
 
@@ -744,13 +742,170 @@ mysql> SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 10;
 
 前端设计使用 Node.js 作为依赖管理工具，使用 Vite 创建 React 框架项目进行处理，同时使用 TailwindCSS 原子化样式控制。
 
+```bash
+npm create vite
+```
+
+分别选择 React 框架与 TypeScript 语言。
+
 ### 组件设计
 
+在项目中创建一个 `components` 文件夹专门用来存放创建的组件，创建一个 `SensorDataTable.tsx` 组件，内容如下
 
+```tsx
+import { useState, useEffect } from 'react';
+import { DateTime } from 'luxon';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+interface SensorData {
+  temperature: number;
+  humidity: number;
+  light: number;
+  rfidData: string;
+  timestamp: string;
+}
+
+export default function SensorDataTable() {
+  const [data, setData] = useState<SensorData[]>([]);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(10);
+  const [startTime, setStartTime] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        let url = `${API_BASE_URL}/api/data?page=${page}&size=${size}`;
+        if (startTime) url += `&startTime=${startTime}`;
+        if (endTime) url += `&endTime=${endTime}`;
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        setData(result);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [page, size, startTime, endTime]);
+
+  const handleDateFilter = () => {
+    setPage(1); // Reset to first page when changing date filter
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto bg-white rounded-lg shadow-md">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">Sensor Data</h1>
+      
+      {/* Date Filter Controls */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+          <input
+            type="datetime-local"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            className="p-2 border rounded-md"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+          <input
+            type="datetime-local"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            className="p-2 border rounded-md"
+          />
+        </div>
+        <button
+          onClick={handleDateFilter}
+          className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          Apply Filter
+        </button>
+      </div>
+
+      {/* Data Table */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temperature</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Light</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RFID Data</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {data.map((item, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {DateTime.fromISO(item.timestamp).toLocaleString(DateTime.DATETIME_MED)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.temperature}°C</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.humidity}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.light} lux</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.rfidData}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      <div className="flex justify-between items-center mt-6">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-700">Rows per page:</span>
+          <select
+            value={size}
+            onChange={(e) => setSize(Number(e.target.value))}
+            className="p-1 border rounded-md"
+          >
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 border rounded-md disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-1 text-sm text-gray-700">Page {page}</span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={data.length < size}
+            className="px-3 py-1 border rounded-md disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
 
 ### 总体页面
 
-
+最后将
 
 ## 云平台设计
 
@@ -794,7 +949,276 @@ webServer.password = "**********"
 ./frps -c ./frps.toml
 ```
 
+穿透服务器正常运行输出如下
 
+```
+● frp.service - FRP Server Service
+     Loaded: loaded (/usr/lib/systemd/system/frp.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2025-03-25 16:52:50 CST; 3 months 5 days ago
+   Main PID: 1244541 (frps)
+      Tasks: 6 (limit: 411)
+     Memory: 34.5M (peak: 153.1M)
+        CPU: 7h 32min 36.272s
+     CGroup: /system.slice/frp.service
+             └─1244541 /opt/frp_0.56.0_linux_amd64/frps -c /opt/frp_0.56.0_linux_amd64/frps.toml
+
+Jun 30 08:52:27 inferno-iii frps[1244541]: 2025-06-30 08:52:27.149 [I] [proxy/proxy.go:204] [93b3d05b3be2a9b8] [talos-ssh] get a user connection [193.32.1>
+Jun 30 08:52:30 inferno-iii frps[1244541]: 2025-06-30 08:52:30.266 [I] [proxy/proxy.go:204] [93b3d05b3be2a9b8] [talos-ssh] get a user connection [195.178.>
+Jun 30 08:52:37 inferno-iii frps[1244541]: 2025-06-30 08:52:37.391 [I] [proxy/proxy.go:204] [93b3d05b3be2a9b8] [talos-ssh] get a user connection [80.94.92>
+~
+```
+
+服务器设置完成之后，在本地设置穿透，键入端口映射设置 `http-vite-dev.toml`
+
+```toml
+serverAddr = "frp.arorms.cn"
+serverPort = 7000
+
+[[proxies]]
+name = "vite-dev"
+type = "http"
+localIP = "127.0.0.1"
+localPort = 5173
+customeDomains = ["hanback.arorms.cn"]
+```
+
+可以看到，这里 http 流量转发的原理是转发服务器监听所有 HTTP 80 端口的请求，同时根据头部携带的域名地址信息来判断请求的是什么网站内容。这里我们设置的域名为 `hanback.arorms.cn` 与 Java 的包名一致。创建完成后即可启动穿透，客户端会通过此域名进行 DNS 查询，因此我们也许要设置相应解析规则：
+
+| 规则         | 内容          |
+| ------------ | ------------- |
+| 记录类型     | CNAME         |
+| 主机记录     | hanback       |
+| 记录值       | frp.arorms.cn |
+| TTL          | 10 min        |
+| 状态         | 启用          |
+| 解析请求来源 | 默认          |
+
+设置完成后即可将服务穿透出去，随后访问 http://hanback.arorms.cn 即可访问到写好的前端，不过这里首先报错了：
+
+> [!CAUTION]
+>
+> ```
+> Blocked request. This host ("hanback.arorms.cn") is not allowed.
+> To allow this host, add "hanback.arorms.cn" to `server.allowedHosts` in vite.config.js.
+> ```
+>
+> 很明显是由于 Vite 开发服务器的安全策略导致的，我们设置的域名没有被明确允许，这里直接按照他的指示追加允许的域名。
+
+在 `vite.config.js` 中添加如下内容
+
+```js
+export default defineConfig({
+  server: {
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "::1",
+      "hanback.arorms.cn"
+    ]
+  },
+  plugins: [react()],
+})
+```
+
+至此前端的穿透部分全部完成。前端完成穿透之后可以直接对后端接口进行穿透，不一样的地方是将穿透方法换成 TCP
+
+```ini
+serverAddr = "frp.arorms.cn"
+serverPort = 7000
+
+[[proxies]]
+name = "spring-8080"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 8080
+remotePort = 8080
+```
+
+然后启动穿透
+
+```
+cacc@paradiso [06:29:30 PM] [~/Applications/frp_0.63.0_linux_amd64] 
+-> % ./frpc -c ./spring.toml       
+2025-06-30 18:29:35.432 [I] [sub/root.go:149] start frpc service for config file [./spring.toml]
+2025-06-30 18:29:35.432 [I] [client/service.go:314] try to connect to server...
+2025-06-30 18:29:35.520 [I] [client/service.go:306] [ef188cd25d77708e] login to server success, get run id [ef188cd25d77708e]
+2025-06-30 18:29:35.520 [I] [proxy/proxy_manager.go:177] [ef188cd25d77708e] proxy added: [spring-8080]
+2025-06-30 18:29:35.549 [I] [client/control.go:172] [ef188cd25d77708e] [spring-8080] start proxy success
+```
+
+测试后端接口
+
+```
+cacc@paradiso [06:30:20 PM] [~] 
+-> % curl http://frp.arorms.cn:8080/api/data/1 | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   110    0   110    0     0    689      0 --:--:-- --:--:-- --:--:--   691
+{
+  "temperature": 26.51,
+  "humidity": 51.04,
+  "light": 355,
+  "rfidData": "59DAD8B35A",
+  "timestamp": "2025-06-30T00:03:22"
+}
+```
+
+那么就完成了后端 API 的穿透。
 
 ### API 交互
 
+在前端设计完成后，我们使用 .env 文件定义项目运行的环境变量，其中有这样一条规则：
+
+```ini
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+这里会存在一个问题，不论是前端测试接口 `http://localhost:5173` 还是最后云接入接口 `http://hanback.arorms.cn` 都存在端口或者域名不同的问题，这样必然会触发跨域问题。
+
+> [!CAUTION]
+>
+> ```
+> Access to fetch at 'http://localhost:8080/api/data?page=1&size=10' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+> ```
+>
+> 现在查看数据，会发现数据一片空白，通过 F12 开发者工具控制台输出可见，存在跨域问题。一般来说这个问题有很多种解决方案，比如：
+>
+> 1. Nginx 反向代理，通过对所有 API 接口的重写，将 API 的 URL 改写成不会触发跨域问题的地址，在转发规则中将这个地址转发给外部服务 API，即可解决浏览器的检查。
+> 2. Websocket 本身的特殊性质导致他不受浏览器跨域问题的困扰。
+> 3. Cross-Origin Resource Sharing（CORS），通过浏览器发送普同请求，但是服务器响应带 `Access-Control-Allow-Origin` 头部。
+
+解决跨域问题的方案还有很多，这里使用第三种方案，由于 Spring 对类的自动管理，可以通过新建 Config 类对服务器进行设置。在 Spring 项目新建一个 config 包，创建类 CorsConfig.java
+
+```java
+package cn.arorms.hanback.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * CorsConfig
+ * @version 1.0 2025-06-30
+ * @description This configuration class sets up CORS (Cross-Origin Resource Sharing) for the application.
+ * It allows requests from specific origins and supports all HTTP methods and headers.
+ */
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("http://localhost:5173", "http://hanback.arorms.cn")
+                .allowedMethods("*")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
+}
+```
+
+这里重写 WebMvcConfigure 这个类，通过重写方法的方式改变服务器设置，这个在 Spring 项目中很常用。这里重写的内容主要包含：
+
+- 允许所有路径
+- 允许所有头部
+- 允许所有方法（GET、POST）
+- 允许所有源（也是在这里，添加了测试前端地址和生产环境下前端地址）
+
+设置完成后重新运行后端服务器即可解决问题。
+
+## 实时发送
+
+### Websocket 服务器
+
+由于客户端是通过普通的 HTTP 请求响应模式来获取数据的，无法接受到实时数据。这里通过 WebSocket 技术将串口监听器中接收到的数据实时更新数据表：
+
+**SensorDataWebSocketHandler**
+
+```java
+package cn.arorms.hanback.websocket;
+
+import cn.arorms.hanback.entity.SensorDataEntity;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.*;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+@Component
+public class SensorDataWebSocketHandler extends TextWebSocketHandler {
+
+    private static final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+
+    private static final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) {
+        sessions.add(session);
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        sessions.remove(session);
+    }
+
+    public static void broadcast(SensorDataEntity data) {
+        try {
+            String json = objectMapper.writeValueAsString(data);
+            for (WebSocketSession session : sessions) {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(json));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+这里包括了最基础的会话控制以及广播方法，然后设置 WebSocket 服务器
+
+**SensorDataWebSocketConfig**
+
+```java
+package cn.arorms.hanback.websocket;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.socket.config.annotation.*;
+
+@Configuration
+@EnableWebSocket
+public class SensorDataWebSocketConfig implements WebSocketConfigurer {
+
+    private final SensorDataWebSocketHandler handler;
+
+    @Autowired
+    public SensorDataWebSocketConfig(SensorDataWebSocketHandler handler) {
+        this.handler = handler;
+    }
+
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(handler, "/ws/data").setAllowedOrigins("*");
+    }
+}
+```
+
+这里设置了 ws 的地址和允许的源。
+
+### 广播
+
+在串口监听器中，原本有监听到串口数据就解析成数据对象并存入数据库的位置，这里加一个功能，即接受到数据后向全体客户端广播数据
+
+```java
+SensorDataWebSocketHandler.broadcast(data);
+```
+
+这样就完成了客户端对传感器数据的动态监听。
