@@ -14,9 +14,10 @@ public class SensorDataTest {
     @Test
     public void testDataInsert() {
         SensorDataEntity data = new SensorDataEntity();
-        data.setTemperatureValue(25.5f);
-        data.setHumidityValue(60.0f);
-        data.setLightValue(300f);
+        data.setTemperature(25.5f);
+        data.setHumidity(60.0f);
+        data.setLight(300f);
+        data.setRfidData("A655573B1D");
         sensorDataService.insertData(data);
         System.out.println("Done");
     }

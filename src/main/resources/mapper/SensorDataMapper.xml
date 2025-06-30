@@ -6,10 +6,10 @@
 <mapper namespace="cn.arorms.hanback.mapper.SensorDataMapper">
 
     <resultMap id="SensorDataMap" type="cn.arorms.hanback.entity.SensorDataEntity">
-        <id property="id" column="id"/>
-        <result property="lightValue" column="light_value"/>
-        <result property="temperatureValue" column="temperature_value"/>
-        <result property="humidityValue" column="humidity_value"/>
+        <result property="temperature" column="temperature"/>
+        <result property="humidity" column="humidity"/>
+        <result property="light" column="light"/>
+        <result property="rfidData" column="rfid_data"/>
         <result property="timestamp" column="timestamp"/>
     </resultMap>
 
@@ -36,9 +36,11 @@
     </delete>
 
     <insert id="insert" parameterType="cn.arorms.hanback.entity.SensorDataEntity">
-        INSERT INTO sensor_data (light_value, temperature_value, humidity_value)
-        VALUES (#{lightValue}, #{temperatureValue}, #{humidityValue})
+        INSERT INTO sensor_data (
+            temperature, humidity, light, rfid_data, timestamp
+        ) VALUES (
+            #{temperature}, #{humidity}, #{light}, #{rfidData}, #{timestamp}
+        )
     </insert>
 
 </mapper>
-
