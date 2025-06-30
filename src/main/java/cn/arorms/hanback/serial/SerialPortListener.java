@@ -2,6 +2,7 @@ package cn.arorms.hanback.serial;
 
 import cn.arorms.hanback.entity.SensorDataEntity;
 import cn.arorms.hanback.service.SensorDataService;
+import cn.arorms.hanback.websocket.SensorDataWebSocketHandler;
 import com.fazecast.jSerialComm.SerialPort;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +17,13 @@ import java.time.LocalDateTime;
 @Component
 public class SerialPortListener {
 
+    private final SensorDataWebSocketHandler webSocketHandler;
     private final SensorDataService sensorDataService;
 
     @Autowired
-    public SerialPortListener(SensorDataService sensorDataService) {
+    public SerialPortListener(SensorDataService sensorDataService, SensorDataWebSocketHandler webSocketHandler) {
         this.sensorDataService = sensorDataService;
+        this.webSocketHandler = webSocketHandler;
     }
 
 
@@ -78,7 +81,9 @@ public class SerialPortListener {
             data.setTimestamp(LocalDateTime.now());
 
             sensorDataService.insertData(data);
-            System.out.printf("Inserted： Temp=%.2f, Hum=%.2f, Light=%.0f RFID=%s, [success]\n", temperature, humidity, light, rfidData);
+            SensorDataWebSocketHandler.broadcast(data);
+
+            System.out.printf("Inserted： Temp=%.2f, Hum=%.2f, Light=%.0f, RFID=%s, [success]\n", temperature, humidity, light, rfidData);
         } catch (NumberFormatException e) {
             System.err.println("Cannot parse data: " + line);
         }
